@@ -508,7 +508,7 @@ function randomKeywords(){
   document.getElementById('kw1').value=shuffled[0];
   document.getElementById('kw2').value=shuffled[1];
   document.getElementById('kw3').value=shuffled[2];
-  showToast('키워드 뽑기 완료! 마음에 안 들면 바꿔도 돼요 😄');
+  showToast('키워드 뽑기 완료! 마음에 안 들면 바꿔도 돼요 😄',true);
 }
 
 // ── GENERATE ──
@@ -531,22 +531,19 @@ async function startGenerate(){
   flipCard.classList.remove('flipped');
 
   let charPrompt=k1+' '+k2+' '+k3+' office worker';
-  // Claude for char description
   try{
-    const cr=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:600,messages:[{role:'user',content:
-        '나는 '+k1+', '+k2+', '+k3+' 이 특징인 직장인이야.'+(detail?'\n추가요청: '+detail:'')+
-        '\n\n이 특징으로 귀여운 업무 캐릭터를 만들어줘.\n\n형식:\n캐릭터 닉네임: (~핑 형식)\n스타일: (2줄)\n필살기: (1가지)\n자기소개: (1인칭 한 문장)\nIMAGE_PROMPT: [영어, 외모와 포즈 묘사 40단어 이내]'
-      }]})
+    const cr=await fetch(API,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=UTF-8'},
+      body:JSON.stringify({action:'generateChar',k1,k2,k3,detail})
     });
     const cd=await cr.json();
-    const txt=cd.content?.[0]?.text||'';
-    const lines=txt.split('\n');
-    const pline=lines.find(l=>l.startsWith('IMAGE_PROMPT:'));
-    charText=lines.filter(l=>!l.startsWith('IMAGE_PROMPT:')).join('\n');
-    charPrompt=pline?pline.replace('IMAGE_PROMPT:','').trim():charPrompt;
-    document.getElementById('char-text').innerHTML=charText.replace(/\n/g,'<br>');
+    if(cd.status==='ok'&&cd.text){
+      const lines=cd.text.split('\n');
+      const pline=lines.find(l=>l.startsWith('IMAGE_PROMPT:'));
+      charText=lines.filter(l=>!l.startsWith('IMAGE_PROMPT:')).join('\n');
+      charPrompt=pline?pline.replace('IMAGE_PROMPT:','').trim():charPrompt;
+      document.getElementById('char-text').innerHTML=charText.replace(/\n/g,'<br>');
+    }
   }catch(e){document.getElementById('char-text').textContent='캐릭터 설명 생성 실패.';}
 
   // DALL-E via Apps Script
@@ -563,7 +560,7 @@ async function startGenerate(){
       setTimeout(()=>{
         flipCard.classList.add('flipped');
         spawnSparkles();
-        showToast('짜잔! 캐릭터 완성! ✨');
+        showToast('짜잔! 캐릭터 완성! ✨',true);
       },300);
       showSel(id.imageUrl,'AI 생성');
     }else{throw new Error(id.message||'생성 실패');}
@@ -602,19 +599,12 @@ async function generateFortune(birth,name,k1,k2,k3){
   const age=new Date().getFullYear()-birthDate.getFullYear();
   const zodiac=['염소','물병','물고기','양','황소','쌍둥이','게','사자','처녀','천칭','전갈','궁수'][Math.floor((birthDate.getMonth()+1-1)/1)%12];
   try{
-    const fr=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:300,messages:[{role:'user',content:
-        name+'님 ('+age+'세, 생년월일: '+birth+') 의 오늘('+today+') 직장운세를 재밌고 따뜻하게 알려줘.\n'+
-        '이 분의 특징: '+k1+', '+k2+', '+k3+'\n\n'+
-        '반드시 아래 JSON 형식으로만 응답해 (다른 텍스트 없이):\n'+
-        '{\n  "main": "오늘의 운세 한 문장 (재밌고 업무 관련)",\n  "lucky_color": "행운의 색",\n  "lucky_number": 숫자,\n  "quote": "이번 스폰서링 응원 글귀 한 문장"\n}'
-      }]})
+    const fr=await fetch(API,{method:'POST',
+      headers:{'Content-Type':'text/plain;charset=UTF-8'},
+      body:JSON.stringify({action:'generateFortune',name,age,birth,today,k1,k2,k3})
     });
     const fd=await fr.json();
-    let ftxt=fd.content?.[0]?.text||'';
-    ftxt=ftxt.replace(/```json|```/g,'').trim();
-    const fortune=JSON.parse(ftxt);
+    const fortune=fd.fortune||{main:'오늘도 빛나는 하루!',lucky_color:'초록',lucky_number:7,quote:'함께 성장하는 여정을 응원합니다!'};
     document.getElementById('fortune-card').innerHTML=
       '<div class="fortune-tag">🔮 '+name+' 님의 오늘의 운세</div>'+
       '<div class="fortune-main">'+fortune.main+'</div>'+
@@ -950,7 +940,7 @@ async function refreshStatus(){
       });
       try{localStorage.setItem('p2026',JSON.stringify(saved));}catch(e){}
       updateProgress();updateAvatars();
-      showToast('업데이트 완료! ('+data.count+'명 완료)');
+      showToast('업데이트 완료! ('+data.count+'명 완료)',true);
     }
   }catch(e){showToast('현황 조회 실패');}
 }
@@ -989,9 +979,9 @@ function showSel(src,name){
 }
 
 // ── TOAST ──
-function showToast(msg){
+function showToast(msg,quick=false){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),500);
+  setTimeout(()=>t.classList.remove('show'),quick?500:2500);
 }
 </script>
 </body>
