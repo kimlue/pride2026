@@ -1057,14 +1057,39 @@ function copyPrompt(type){
   const text = type==='hair' ? HAIR_PROMPT_TEXT : charPromptText;
   const btnId = type==='hair' ? 'btn-hair' : 'btn-char';
   const origText = type==='hair' ? '📋 헤어스타일 분석 프롬프트 복사' : '📋 캐릭터 프롬프트 복사';
-  navigator.clipboard.writeText(text).then(()=>{}).catch(()=>{
-    const ta=document.createElement('textarea');ta.value=text;
-    document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);
-  });
-  const btn=document.getElementById(btnId);
-  btn.textContent='✅ 복사 완료!';
-  setTimeout(()=>{btn.textContent=origText;},2000);
-  showToast('복사됐어요! ChatGPT/Gemini에 붙여넣으세요',1500);
+  const btn = document.getElementById(btnId);
+
+  // iOS Safari 포함 모든 환경 대응
+  const iosCopy = () => {
+    const el = document.createElement('input');
+    el.value = text;
+    el.style.cssText = 'position:fixed;top:0;left:0;opacity:0;font-size:16px;';
+    document.body.appendChild(el);
+    el.focus();
+    el.setSelectionRange(0, text.length);
+    try {
+      document.execCommand('copy');
+      btn.textContent = '✅ 복사 완료!';
+      showToast('복사됐어요! ChatGPT/Gemini에 붙여넣으세요', 1500);
+    } catch(e) {
+      btn.textContent = '⚠️ 직접 복사해주세요';
+      showToast('복사 실패 — 텍스트를 직접 선택해서 복사해주세요', 2500);
+    }
+    document.body.removeChild(el);
+    setTimeout(() => { btn.textContent = origText; }, 2000);
+  };
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        btn.textContent = '✅ 복사 완료!';
+        showToast('복사됐어요! ChatGPT/Gemini에 붙여넣으세요', 1500);
+        setTimeout(() => { btn.textContent = origText; }, 2000);
+      })
+      .catch(() => iosCopy());
+  } else {
+    iosCopy();
+  }
 }
 
 function genCharPrompt(){
